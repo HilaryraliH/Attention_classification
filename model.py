@@ -765,6 +765,105 @@ def Deep3DTwoBranchResnet(model_input, cfg,conv1=32,conv2=32,conv3=64,flatten_de
     return model
 
 
+def Deep3DTwoBranchBigResnet(model_input, cfg,conv1=32,conv2=32,conv3=64,flatten_dense=32):
+    '''
+    以 Deep3DTwoBranchResnet 为基础，加上大分支resnet
+    Deep3DTwoBranchResnet中是3个小分支
+    此处，再加上了从trans1到最后的大分支
+    '''
+    trans1 = Conv3D(conv1, (3, 3, 5), strides=(2, 2, 4))(model_input)
+    trans1 = BatchNormalization()(trans1)
+    trans1 = Activation('relu')(trans1)
+
+    # conv block 1-2 
+    cv1_left = Conv3D(conv1, (2, 2, 3), padding='same')(trans1)
+    cv1_left = BatchNormalization()(cv1_left)
+    cv1_left = Activation('relu')(cv1_left)
+
+    cv2_left = Conv3D(conv1, (2, 2, 3), padding='same')(cv1_left)
+    cv2_left = BatchNormalization()(cv2_left)
+    cv2_left = Activation('relu')(cv2_left)
+
+    cv1_right = Conv3D(conv1, (3, 3, 5), padding='same')(trans1)
+    cv1_right = BatchNormalization()(cv1_right)
+    cv1_right = Activation('relu')(cv1_right)
+
+    cv2_right = Conv3D(conv1, (3, 3, 5), padding='same')(cv1_right)
+    cv2_right = BatchNormalization()(cv2_right)
+    cv2_right = Activation('relu')(cv2_right)
+
+    cv12_left_right = Add()([cv2_left, cv2_right, trans1])
+
+    # transition bolock 1 : inputsize: 4,4,99,64
+    trans2 = Conv3D(conv2, (2, 2, 3), strides=(2, 2, 2))(cv12_left_right)
+    trans2 = BatchNormalization()(trans2)
+    trans2 = Activation('relu')(trans2)
+
+    # conv block 3-4: inputsize: 4,4,99,64
+    cv3_left = Conv3D(conv2, (2, 2, 3), padding='same')(trans2)
+    cv3_left = BatchNormalization()(cv3_left)
+    cv3_left = Activation('relu', )(cv3_left)
+
+    cv4_left = Conv3D(conv2, (2, 2, 3), padding='same')(cv3_left)
+    cv4_left = BatchNormalization()(cv4_left)
+    cv4_left = Activation('relu')(cv4_left)
+
+    cv3_right = Conv3D(conv2, (3, 3, 5), padding='same')(trans2)
+    cv3_right = BatchNormalization()(cv3_right)
+    cv3_right = Activation('relu')(cv3_right)
+
+    cv4_right = Conv3D(conv2, (3, 3, 5), padding='same')(cv3_right)
+    cv4_right = BatchNormalization()(cv4_right)
+    cv4_right = Activation('relu')(cv4_right)
+
+    cv34_left_right = Add()([cv4_left, cv4_right,trans2])
+
+    # transition bolock 3 : inputsize: 4,4,99,64
+    trans3 = Conv3D(conv3, (2, 2, 3), strides=(2, 2, 2))(cv34_left_right)
+    trans3 = BatchNormalization()(trans3)
+    trans3 = Activation('relu')(trans3)
+
+    # conv block 5-6: inputsize: 4,4,99,64
+
+    cv5_left = Conv3D(conv3, (2, 2, 3), padding='same')(trans3)
+    cv5_left = BatchNormalization()(cv5_left)
+    cv5_left = Activation('relu')(cv5_left)
+
+    cv6_left = Conv3D(conv3, (2, 2, 3), padding='same')(cv5_left)
+    cv6_left = BatchNormalization()(cv6_left)
+    cv6_left = Activation('relu')(cv6_left)
+
+    cv5_right = Conv3D(conv3, (3, 3, 5), padding='same')(trans3)
+    cv5_right = BatchNormalization()(cv5_right)
+    cv5_right = Activation('relu')(cv5_right)
+
+    cv6_right = Conv3D(conv3, (3, 3, 5), padding='same')(cv5_right)
+    cv6_right = BatchNormalization()(cv6_right)
+    cv6_right = Activation('relu')(cv6_right)
+
+    BigRes = Conv3D(conv3, (2, 2, 3), padding='same')(trans1)
+
+    cv56_left_right_BigRes = Add()([cv6_left, cv6_right,trans3,BigRes])
+
+    # 将最后加起来的再做一个卷积
+    added = Conv3D(conv2, (2, 2, 3), padding='same')(cv56_left_right_BigRes)
+
+    # flatten and classification
+    flt = Flatten()(added)
+
+    ds = Dense(flatten_dense)(flt)
+    ds = BatchNormalization()(ds)
+    ds = Activation('relu')(ds)
+
+    ds = Dense(flatten_dense)(ds)
+    ds = BatchNormalization()(ds)
+    ds = Activation('relu')(ds)
+
+    out_put = Dense(2, activation='softmax')(ds)
+
+    model = Model(model_input, out_put)
+    return model
+
 
 def Deep3DThreeBranch(model_input, cfg):
     '''

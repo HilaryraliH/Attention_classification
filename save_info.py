@@ -1,5 +1,3 @@
-# 同步 2020-11-24
-
 # coding=utf-8
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,54 +18,6 @@ def my_append_col(total, one):
     return total
 
 
-def save_training_pic(hist, cfg):
-    '''保存每一次训练的每一张图'''
-
-    # 保存 acc 趋势图
-    plt.figure()
-    metric = 'accuracy'
-    plt.plot(hist.history[metric])
-    plt.plot(hist.history['val_' + metric])
-    plt.title('val_' + metric + ':' + str(hist.history['val_' + metric][-1]))
-    plt.ylabel(metric, fontsize='large')
-    plt.xlabel('epoch', fontsize='large')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig(cfg.save_acc_file, bbox_inches='tight')
-    plt.close()
-
-    # 保存 loss 趋势图
-    plt.figure()
-    metric = 'loss'
-    plt.plot(hist.history[metric])
-    plt.plot(hist.history['val_' + metric])
-    plt.title('val_' + metric + ':' + str(hist.history['val_' + metric][-1]))
-    plt.ylabel(metric, fontsize='large')
-    plt.xlabel('epoch', fontsize='large')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig(cfg.save_loss_file, bbox_inches='tight')
-    plt.close()
-
-
-def save_training_acc_pic_in_one_fig(hist, nrow,ncol,cross):
-    '''保存每一次训练的每一张图'''
-
-    # 保存 acc 趋势图
-    metric = 'accuracy'
-    plt.subplot(nrow,ncol,cross+1)
-    plt.plot(hist[metric])
-    plt.plot(hist['val_' + metric])
-    plt.axis('off')
-
-
-
-
-def save_training_loss_pic_in_one_fig(hist, nrow,ncol,cross):
-    # 保存 loss 趋势图
-    metric = 'loss'
-    plt.subplot(nrow,ncol,cross+1) # 在画布的第 cross+1 个位置画
-    plt.plot(hist[metric])
-    plt.plot(hist['val_' + metric])
-    plt.axis('off')
 
 
 

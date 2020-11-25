@@ -1,5 +1,3 @@
-# 同步 2020-11-24
-
 '''通用的config，
 还未考虑的功能：分支模型、滤波数据读取
 '''
@@ -166,9 +164,6 @@ class config():
         check_path(self.save_loss_dir)
         self.save_loss_file = self.save_loss_dir + str(cross) + '.png'
 
-        # 将26张loss和acc训练趋势图保存在一张图上
-        self.save_one_loss_file = self.save_loss_dir + 'total_loss.png'
-        self.save_one_acc_file = self.save_acc_dir + 'total_acc.png'
 
         # 保存 每次 cross 中，训练的具体信息：'val_loss', 'val_accuracy', 'loss', 'accuracy', 'lr'
         self.save_tr_process_dir = self.save_dir + 'tr_process'+os.sep
@@ -179,6 +174,11 @@ class config():
         self.save_tsne_fig_dir = self.save_dir + 'dense_tsne_fig'+os.sep
         check_path(self.save_tsne_fig_dir)
         self.save_tsne_fig_file = self.save_tsne_fig_dir + str(cross) + '.png'
+
+        # 将26张loss和acc训练趋势图保存在一张图上
+        self.save_one_loss_file = self.save_loss_dir + 'total_loss.png'
+        self.save_one_acc_file = self.save_acc_dir + 'total_acc.png'
+        self.save_one_dense_file = self.save_tsne_fig_dir + 'total_dense_separable.png'
 
         # 保存本 cycle 的所有 混淆矩阵
         self.cnf_mtr_cycle_file = self.save_dir + 'cnf_mtr_cycle.npy'

@@ -1,5 +1,3 @@
-# 同步 2020-11-24
-
 # 系统库
 import os
 import pickle
@@ -11,9 +9,9 @@ from keras.utils import plot_model
 # 自己文件
 from config import config
 from preprocess_data import load_data
-from visualization import plot_dense_separability
+from visualization import plot_acc_or_loss_single,plot_dense_single
 from model import blt_mdl, eval_mdl, fit_mdl,load_mdl_file
-from save_info import save_training_pic,save_other_info,my_append_row,my_append_col
+from save_info import save_other_info,my_append_row,my_append_col
 
 # 不全部占满显存, 按需分配
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -32,16 +30,16 @@ cfg = config(
     # 从 Covert_elec 和 SimulEEG_elec 中选择电极
     elec_area = 'All',
     # 设定数据的输入方式： '2D' or '3D' ( 只有当 elec_area 为 All时，才能为 3D )
-    dt_fm = '2D',
+    dt_fm = '3D',
     # 从 model 文件中选择模型
-    mdl_nm = 'ShallowconvnetOrigin',
+    mdl_nm = 'Deep3DTwoBranchResnet',
     # 每个模型跑几次
-    cycles = 5, 
+    cycles = 5,
     # 开始的cycle 和 开始的cross
-    st_cycle = 0,
-    st_cross = 0,
+    st_cycle = 4,
+    st_cross = 11,
     # 自己写创建的文件夹备注信息，3D模型是否插值，插值方法等，都要在这里表明
-    other_info = '0'
+    other_info = '32-32-64'
 )
 
 
@@ -164,7 +162,7 @@ for cycle in range(cfg.st_cycle,cfg.cycles):
             file.close()
 
             # 保存训练时的acc趋势图
-            save_training_pic(hist, cfg)
+            plot_acc_or_loss_single(hist.history, cfg)
 
             # 用验证集验证模型
             acc, cnf_mtr_cross = eval_mdl( mdl, val_x, val_y)
@@ -180,7 +178,7 @@ for cycle in range(cfg.st_cycle,cfg.cycles):
             # loaded_data.keys()
 
         # 画出模型在 dense 层的可分性，再保存图片
-        plot_dense_separability(mdl,cfg,val_x,val_y,cross)
+        plot_dense_single(mdl,cfg,val_x,val_y,cross)
 
         # 保存参数数量
         info_dict['numParams'] = mdl.count_params()

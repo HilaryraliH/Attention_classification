@@ -1,5 +1,3 @@
-# 同步 2020-11-24
-
 import numpy as np
 import pickle
 from keras.models import Model
@@ -9,9 +7,119 @@ from sklearn.manifold import TSNE
 from config import config
 from preprocess_data import load_data
 from model import load_mdl_file
-from save_info import save_training_acc_pic_in_one_fig,save_training_loss_pic_in_one_fig
 
-def plot_dense_separability(mdl,cfg,val_x,val_y,cross):
+def plot_dense_embed(mdl,cfg, nrow,ncol,val_x,val_y,cross):
+    # 取出模型的第一层和dense层，dense层作为输出，构造新的模型
+    out_ly_shape = mdl.layers[cfg.visual_layer].output
+    act_mdl = Model(inputs=mdl.input, outputs=out_ly_shape)
+
+    # 对验证数据进行验证，
+    dt = act_mdl.predict(val_x)
+
+    # 构造tsne模型
+    tsne = TSNE(n_components=2, init='pca', random_state=0)
+    # 将数据降维
+    tans_dt = tsne.fit_transform(dt)
+    # 得到需要画的数据
+    y = np.where(val_y==1)[1]
+    idx_0 = np.where(y==0)
+    idx_1 = np.where(y==1)
+    x1 = tans_dt[idx_0,0]
+    x2 = tans_dt[idx_1,0]
+    y1 = tans_dt[idx_0,1]
+    y2 = tans_dt[idx_1,1]
+
+    # 根据label画出相应的颜色
+    # 对于SimulEEG，att label 为 0，non-att label 为 1
+    # 对于covert，att label 为 1，non-att label 为 0
+    plt.subplot(nrow,ncol,cross+1)
+    if cfg.dt=='SimulEEG':
+        plt.scatter(x1,y1,c='red',marker='.',label='att')
+        plt.scatter(x2,y2,c='blue',marker='.',label='non_att')
+    else:
+        plt.scatter(x1,y1,c='blue',marker='.',label='non_att')
+        plt.scatter(x2,y2,c='red',marker='.',label='att')
+    plt.title(str(cross))
+    plt.axis('off')
+
+
+def plot_acc_embed(hist, nrow,ncol,cross):
+    '''保存每一次训练的每一张图'''
+
+    # 保存 acc 趋势图
+    metric = 'accuracy'
+    plt.subplot(nrow,ncol,cross+1)
+    plt.plot(hist[metric])
+    plt.plot(hist['val_' + metric])
+    plt.axis('off')
+
+
+def plot_loss_embed(hist, nrow,ncol,cross):
+    # 保存 loss 趋势图
+    metric = 'loss'
+    plt.subplot(nrow,ncol,cross+1) # 在画布的第 cross+1 个位置画
+    plt.plot(hist[metric])
+    plt.plot(hist['val_' + metric])
+    plt.axis('off')
+
+
+def plot_dense_big(cfg,nrow,ncol, st_cycle=0,st_cross=0):
+    for cycle in range(st_cycle, cfg.cycles):
+        # 建立一张大画布
+        plt.figure()
+
+        for cross in range(st_cross, cfg.cross_num):
+            cfg.set_dir(cycle, cross)
+
+            # 读取数据
+            print('\n', '--'*20, 'Start load data from dataset {} '.format(cfg.dt), '--'*20, '\n')
+            __, __, val_x, val_y = load_data(cross, cfg,get_tr=False) # 若cfg_2不为None，则返回两种数据的列表
+
+            # load 模型, 并显示结构
+            mdl = load_mdl_file(cfg)
+            if cross==0 and cycle==0:
+                mdl.summary()
+
+            # 画出模型在 dense 层的可分性，再保存图片
+            plot_dense_embed(mdl, cfg, nrow, ncol, val_x, val_y, cross)
+
+        # 保存大画布到文件
+        plt.suptitle(cfg.mdl_nm+'__'+'cycle'+str(cycle)+'__'+'dense_separability')
+        plt.savefig(cfg.save_one_dense_file, bbox_inches='tight')
+        plt.close()
+
+
+def plot_acc_or_loss_big(cfg,metrics,nrow,ncol, st_cycle=0,st_cross=0):
+
+    for cycle in range(st_cycle,cfg.cycles):
+        # 建立一张大画布
+        plt.figure()
+
+        for cross in range(st_cross,cfg.cross_num):
+            cfg.set_dir(cycle,cross)
+            
+            # load history 文件
+            df=open(cfg.save_tr_process_file,'rb')#注意此处是rb
+            hist=pickle.load(df)
+            df.close() 
+
+            # 保存训练时的 acc、loss 趋势图，并保存到一张大图上
+            if metrics=='accuracy':
+                plot_acc_embed(hist,nrow,ncol,cross)
+            elif metrics=='loss':
+                plot_loss_embed(hist,nrow,ncol,cross)
+        
+
+        # 保存大画布到文件
+        plt.suptitle(cfg.mdl_nm+metrics)
+        if metrics=='accuracy':
+            plt.savefig(cfg.save_one_acc_file, bbox_inches='tight')
+        elif metrics=='loss':
+            plt.savefig(cfg.save_one_loss_file, bbox_inches='tight')
+        plt.close()
+
+
+def plot_dense_single(mdl,cfg,val_x,val_y,cross):
     # 取出模型的第一层和dense层，dense层作为输出，构造新的模型
     out_ly_shape = mdl.layers[cfg.visual_layer].output
     act_mdl = Model(inputs=mdl.input, outputs=out_ly_shape)
@@ -48,7 +156,36 @@ def plot_dense_separability(mdl,cfg,val_x,val_y,cross):
     print('saved figure {}'.format(cfg.save_tsne_fig_file))
 
 
-def plot_all_dense_separability_func(cfg, st_cycle=0,st_cross=0):
+def plot_acc_or_loss_single(hist, cfg):
+    '''保存每一次训练的每一张图'''
+
+    # 保存 acc 趋势图
+    plt.figure()
+    metric = 'accuracy'
+    plt.plot(hist[metric])
+    plt.plot(hist['val_' + metric])
+    plt.title('val_' + metric + ':' + str(hist['val_' + metric][-1]))
+    plt.ylabel(metric, fontsize='large')
+    plt.xlabel('epoch', fontsize='large')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.savefig(cfg.save_acc_file, bbox_inches='tight')
+    plt.close()
+
+    # 保存 loss 趋势图
+    plt.figure()
+    metric = 'loss'
+    plt.plot(hist[metric])
+    plt.plot(hist['val_' + metric])
+    plt.title('val_' + metric + ':' + str(hist['val_' + metric][-1]))
+    plt.ylabel(metric, fontsize='large')
+    plt.xlabel('epoch', fontsize='large')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.savefig(cfg.save_loss_file, bbox_inches='tight')
+    plt.close()
+
+
+
+def plot_dense_all_sigle(cfg, st_cycle=0,st_cross=0):
     for cycle in range(st_cycle,cfg.cycles):
         for cross in range(st_cross,cfg.cross_num):
             cfg.set_dir(cycle,cross)
@@ -63,39 +200,8 @@ def plot_all_dense_separability_func(cfg, st_cycle=0,st_cross=0):
                 mdl.summary()
 
             # 画出模型在 dense 层的可分性，再保存图片
-            plot_dense_separability(mdl,cfg,val_x,val_y,cross)
+            plot_dense_single(mdl,cfg,val_x,val_y,cross)
 
-
-def plot_one_fig_func(cfg,metrics,nrow,ncol, st_cycle=0,st_cross=0):
-
-    for cycle in range(st_cycle,cfg.cycles):
-        # 建立一张大画布
-        plt.figure()
-
-        for cross in range(st_cross,cfg.cross_num):
-            cfg.set_dir(cycle,cross)
-            
-            # load history 文件
-            df=open(cfg.save_tr_process_file,'rb')#注意此处是rb
-            hist=pickle.load(df)
-            df.close() 
-
-            # 保存训练时的 acc、loss 趋势图，并保存到一张大图上
-            if metrics=='accuracy':
-                save_training_acc_pic_in_one_fig(hist,nrow,ncol,cross)
-            elif metrics=='loss':
-                save_training_loss_pic_in_one_fig(hist,nrow,ncol,cross)
-        
-
-        # 保存大画布到文件
-        plt.suptitle(cfg.mdl_nm+metrics)
-        if metrics=='accuracy':
-            plt.savefig(cfg.save_one_acc_file, bbox_inches='tight')
-        elif metrics=='loss':
-            plt.savefig(cfg.save_one_loss_file, bbox_inches='tight')
-        plt.close()
-
-    
 # 单独运行此文件时，要调的参数都在  if __name__ == "__main__" 内部
 
 if __name__ == "__main__":
@@ -104,7 +210,8 @@ if __name__ == "__main__":
     st_cycle = 0
     st_cross = 0
     need_cfg_2 = False
-    plot_dense = False
+    plot_all_dense = False
+    plot_one_dense = True
     plot_one_acc = True
     plot_one_loss = True
     nrow = 5
@@ -125,15 +232,18 @@ if __name__ == "__main__":
         st_cycle = 0,
         st_cross = 0,
         # 自己写创建的文件夹备注信息，3D模型是否插值，插值方法等，都要在这里表明
-        other_info = '64-32-16'
+        other_info = '32-32-64'
     )
 
-    if plot_dense:
-        plot_all_dense_separability_func(cfg)
+    if plot_all_dense:
+        plot_dense_all_sigle(cfg)
+    if plot_one_dense:
+        plot_dense_big(cfg,nrow,ncol)
     if plot_one_acc:
-        plot_one_fig_func(cfg,'accuracy',nrow,ncol)
+        plot_acc_or_loss_big(cfg,'accuracy',nrow,ncol)
     if plot_one_loss:
-        plot_one_fig_func(cfg,'loss',nrow,ncol)
+        plot_acc_or_loss_big(cfg,'loss',nrow,ncol)
+
 
 
 

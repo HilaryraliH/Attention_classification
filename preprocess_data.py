@@ -1,5 +1,3 @@
-#  同步 2020-11-24
-
 # coding=utf-8
 import os
 import numpy as np
