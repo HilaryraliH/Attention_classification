@@ -18,7 +18,7 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
 
     # 构造 val_sub
     all_sub = [i for i in range(1,cfg.sub_num)]
-    val_start_sub = sub*cfg.sub_num_each_cross
+    val_start_sub = (sub-1)*cfg.sub_num_each_cross +1
     val_sub = [i for i in range(
         val_start_sub, val_start_sub+cfg.sub_num_each_cross)]
 
@@ -45,7 +45,7 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
         # 如果cfg_2有值，则返回数据列表，以适合接下来的双输入模型
         dt_2 = {}
         if cfg_2:
-            for i in range(cfg_2.sub_num):
+            for i in range(1,cfg_2.sub_num):
                 dt_2[i] = np.load(cfg_2.process_dt_dir + str(i)+ 'dt.npy')
 
             tr_dt_2,  __,    val_dt_2,  __     = split_tr_val(dt_2, lab, tr_sub, val_sub)
@@ -121,16 +121,16 @@ def load_dataset(cfg):
     # 将所有的data变为 字典： 
     # {0：(samples，chans，points)，1：(samples，chans，points)  ...  8：...}
     # {0：(1, samples)，            1：(1, samples)  ...              8：...}
-    sub_num = data.shape[1]
+    sub_num = data.shape[1]+1
     all_dt = {}  
     all_lab = {}  
-    for sub in range(sub_num):
+    for sub in range(1,sub_num):
         tmp_dt = None
         if cfg.dt == 'Covert1s'or cfg.dt =='Covert2s':
-            tmp_dt = np.transpose(data[0, sub], (0, 2, 1))
+            tmp_dt = np.transpose(data[0, sub-1], (0, 2, 1))
         else:
-            tmp_dt = np.transpose(data[0, sub], (2, 1, 0))
-        tmp_lab = label[0, sub]
+            tmp_dt = np.transpose(data[0, sub-1], (2, 1, 0))
+        tmp_lab = label[0, sub-1]
         all_dt[sub] = tmp_dt
         all_lab[sub] = tmp_lab
 
@@ -180,8 +180,8 @@ def split_tr_val(dt, lab, tr_sub, val_sub,get_tr=True,get_val=True):
     if get_tr:
         for i, sub in enumerate(tr_sub):
             print('     concatenate {} sub as training data...'.format(sub))
-            tmp_dt = dt[sub]
-            tmp_lab = lab[sub]
+            tmp_dt = dt[sub-1]
+            tmp_lab = lab[sub-1]
             if i == 0:
                 tr_dt = tmp_dt
                 tr_lab = tmp_lab
