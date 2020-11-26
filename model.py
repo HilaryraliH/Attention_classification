@@ -905,7 +905,7 @@ def Deep3DTwoBranchBigResnet(model_input, cfg,conv1=32,conv2=32,conv3=64,flatten
     cv6_right = BatchNormalization()(cv6_right)
     cv6_right = Activation('relu')(cv6_right)
 
-    BigRes = Conv3D(conv3, (2, 2, 3), padding='same')(trans1)
+    BigRes = Conv3D(conv3, (4, 4, 7),strides=(1,1,4))(trans1)
 
     cv56_left_right_BigRes = Add()([cv6_left, cv6_right,trans3,BigRes])
 
