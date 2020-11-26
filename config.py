@@ -113,8 +113,9 @@ class config():
         self.dt_sub = [8, 8, 26]
         self.dt = self.datasets[self.dt_idx]  # 数据集名字
         self.sam_pnts = self.dt_points[self.dt_idx]  # 数据长度
-        self.sub_num = self.dt_sub[self.dt_idx] +1   # 共 多少 个被试,因为都用于循环中，所以要多加1，这样才能从1开始数到最后
+        self.sub_num = self.dt_sub[self.dt_idx]   # 共 多少 个被试
         self.cross_num = (self.sub_num//self.sub_num_each_cross)+1 # 共 多少 折交叉验证 （可算出每一个cross几个被试）
+        self.sub_num = self.sub_num+1 # 因为都用于循环中，所以要多加1，这样才能从1开始数到最后
         self.elec = eval(self.dt+'_elec')[self.elec_area]  # 具体电极导联
         self.visual_layer = visual_layer_dict[self.mdl_nm]
 

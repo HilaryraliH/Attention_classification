@@ -17,7 +17,7 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
     dt, lab = {}, {}
 
     # 构造 val_sub
-    all_sub = [i for i in range(cfg.sub_num)]
+    all_sub = [i for i in range(1,cfg.sub_num)]
     val_start_sub = sub*cfg.sub_num_each_cross
     val_sub = [i for i in range(
         val_start_sub, val_start_sub+cfg.sub_num_each_cross)]
@@ -35,7 +35,7 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
     if os.path.exists(cfg.process_dt_dir + str(cfg.sub_num-1)+ 'dt.npy'):
         print(' Data has already been processed, now, loading them from file {}......'.format(cfg.process_dt_dir))
         # 从文件读入数据
-        for i in range(cfg.sub_num):
+        for i in range(1,cfg.sub_num):
             dt[i] = np.load(cfg.process_dt_dir + str(i)+ 'dt.npy')
             lab[i] = np.load(cfg.process_dt_dir + str(i)+ 'lab.npy')
         # 将字典形式的数据，分为 train 和 val 两部分，并将其融合为数组形式
@@ -59,7 +59,7 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
         # 取出相应电极数据，返回字典形式
         dt = extract_elec_data(dt, cfg)
 
-        for i in range(cfg.sub_num):
+        for i in range(1,cfg.sub_num):
 
             # 将 每一个sub的label 转换为模型需要的二值输入格式
             lab[i] = to_categorical(np.squeeze(lab[i], axis=0))
