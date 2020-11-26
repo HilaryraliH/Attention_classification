@@ -32,11 +32,11 @@ cfg = config(
     # 设定数据的输入方式： '2D' or '3D' ( 只有当 elec_area 为 All时，才能为 3D )
     dt_fm = '3D',
     # 从 model 文件中选择模型
-    mdl_nm = 'Deep3DTwoBranchResnet',
+    mdl_nm = 'Deep3DTwoBranchBigResnet',
     # 每个模型跑几次, 只关心几次，不要关心是从0还是从1开始
-    cycles = 7,
+    cycles = 2,
     # 开始的cycle 和 开始的cross，此处的概念都是从1开始
-    st_cycle = 6,
+    st_cycle = 1,
     st_cross = 1,
     # 自己写创建的文件夹备注信息，3D模型是否插值，插值方法等，都要在这里表明
     other_info = '32-32-64'
