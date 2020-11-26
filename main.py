@@ -37,7 +37,7 @@ cfg = config(
     cycles = 7,
     # 开始的cycle 和 开始的cross，此处的概念都是从1开始
     st_cycle = 6,
-    st_cross = 0,
+    st_cross = 1,
     # 自己写创建的文件夹备注信息，3D模型是否插值，插值方法等，都要在这里表明
     other_info = '32-32-64'
 )
