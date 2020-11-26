@@ -47,7 +47,8 @@ visual_layer_dict = {
     'Deep3DThreeBranch':-4,
     'Deep3DSmallKernel':-4,
     'JnecnnOriginConstraint':-3,
-    'Deep3DTwoBranchResnet':-4
+    'Deep3DTwoBranchResnet':-4,
+    'Deep3DBatchNorm':-4
 }
 
 class config():
@@ -91,7 +92,7 @@ class config():
         # 从 model 文件中选择模型
         self.mdl_nm = mdl_nm
         self.sub_num_each_cross = sub_num_each_cross
-        self.cycles = cycles  # 每个模型只跑一次
+        self.cycles = cycles+1  # 每个模型只跑一次
         self.st_cycle = st_cycle
         self.st_cross = st_cross
         self.need_cfg_2 = need_cfg_2
@@ -146,7 +147,7 @@ class config():
         check_path(self.root_dir)
 
         # 保存本cycle的 一次运行结果, 共 cycles 次
-        self.save_dir = self.root_dir + '第{}次cycle'.format(cycle+1) +os.sep
+        self.save_dir = self.root_dir + '第{}次cycle'.format(cycle) +os.sep
         check_path(self.save_dir)
 
         # 保存 每次 cross 中，模型的名字

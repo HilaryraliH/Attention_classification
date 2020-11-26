@@ -33,11 +33,11 @@ cfg = config(
     dt_fm = '3D',
     # 从 model 文件中选择模型
     mdl_nm = 'Deep3DTwoBranchResnet',
-    # 每个模型跑几次
-    cycles = 5,
-    # 开始的cycle 和 开始的cross
-    st_cycle = 4,
-    st_cross = 11,
+    # 每个模型跑几次, 只关心几次，不要关心是从0还是从1开始
+    cycles = 7,
+    # 开始的cycle 和 开始的cross，此处的概念都是从1开始
+    st_cycle = 6,
+    st_cross = 0,
     # 自己写创建的文件夹备注信息，3D模型是否插值，插值方法等，都要在这里表明
     other_info = '32-32-64'
 )
@@ -104,7 +104,7 @@ for cycle in range(cfg.st_cycle,cfg.cycles):
 
         # 若程序中断过，则存在这些结果文件，则将每一个都load进来继续训练，但其中的训练时间无法更新，所以，对于时间，看看就好
         # 但这段程序，也让除了第0次，之后的每次训练，都会从前面的文件中load变量
-        print("\n\n",'#' * 40,"Start process of {} cross ".format(cross),'#' * 40)
+        print("\n\n\n",'#' * 70,"Start process of {} cross ".format(cross),'#' * 70)
 
         if os.path.exists(cfg.cnf_mtr_cycle_file):
             cnf_mtr_cycle = np.load(cfg.cnf_mtr_cycle_file)

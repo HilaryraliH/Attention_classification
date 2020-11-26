@@ -461,63 +461,127 @@ def Base3D(model_input, cfg):
     return Model(model_input, out_put)
 
 
-def Deep3D(model_input, cfg,conv1=16,conv2=32,conv3=64,flatten_dense=32):
+def Deep3D(model_input, cfg,conv1=32,conv2=32,conv3=64,flatten_dense=32):
     trans1 = Conv3D(conv1, (3, 3, 5), strides=(2, 2, 4),name=cfg.mdl_nm+str(1))(model_input)
-    trans1 = BatchNormalization(name=cfg.mdl_nm+str(2))(trans1)
-    trans1 = Activation('relu',name=cfg.mdl_nm+str(3))(trans1)
+    trans1 = BatchNormalization()(trans1)
+    trans1 = Activation('relu')(trans1)
 
     # conv block 1-2 (cv1)
-    cv1 = Conv3D(conv1, (2, 2, 3), padding='same',name=cfg.mdl_nm+str(4))(trans1)
-    cv1 = BatchNormalization(name=cfg.mdl_nm+str(5))(cv1)
-    cv1 = Activation('relu',name=cfg.mdl_nm+str(6))(cv1)
+    cv1 = Conv3D(conv1, (2, 2, 3), padding='same')(trans1)
+    cv1 = BatchNormalization()(cv1)
+    cv1 = Activation('relu')(cv1)
 
-    cv2 = Conv3D(conv1, (2, 2, 3), padding='same',name=cfg.mdl_nm+str(7))(cv1)
-    cv2 = BatchNormalization(name=cfg.mdl_nm+str(8))(cv2)
-    cv2 = Activation('relu',name=cfg.mdl_nm+str(9))(cv2)
+    cv2 = Conv3D(conv1, (2, 2, 3), padding='same')(cv1)
+    cv2 = BatchNormalization()(cv2)
+    cv2 = Activation('relu')(cv2)
 
     # transition bolock 1 : inputsize: 4,4,99,64
-    trans2 = Conv3D(conv2, (2, 2, 3), strides=(2, 2, 2),name=cfg.mdl_nm+str(10))(cv2)
-    trans2 = BatchNormalization(name=cfg.mdl_nm+str(11))(trans2)
-    trans2 = Activation('relu',name=cfg.mdl_nm+str(12))(trans2)
+    trans2 = Conv3D(conv2, (2, 2, 3), strides=(2, 2, 2))(cv2)
+    trans2 = BatchNormalization()(trans2)
+    trans2 = Activation('relu')(trans2)
 
     # conv block 3-4: inputsize: 4,4,99,64
-    cv3 = Conv3D(conv2, (2, 2, 3), padding='same',name=cfg.mdl_nm+str(13))(trans2)
-    cv3 = BatchNormalization(name=cfg.mdl_nm+str(14))(cv3)
-    cv3 = Activation('relu',name=cfg.mdl_nm+str(15))(cv3)
+    cv3 = Conv3D(conv2, (2, 2, 3), padding='same')(trans2)
+    cv3 = BatchNormalization()(cv3)
+    cv3 = Activation('relu')(cv3)
 
-    cv4 = Conv3D(conv2, (2, 2, 3), padding='same',name=cfg.mdl_nm+str(16))(cv3)
-    cv4 = BatchNormalization(name=cfg.mdl_nm+str(17))(cv4)
-    cv4 = Activation('relu',name=cfg.mdl_nm+str(18))(cv4)
+    cv4 = Conv3D(conv2, (2, 2, 3), padding='same')(cv3)
+    cv4 = BatchNormalization()(cv4)
+    cv4 = Activation('relu')(cv4)
 
     # transition bolock 3 : inputsize: 4,4,99,64
-    trans3 = Conv3D(conv3, (2, 2, 3), strides=(2, 2, 2),name=cfg.mdl_nm+str(19))(cv4)
-    trans3 = BatchNormalization(name=cfg.mdl_nm+str(20))(trans3)
-    trans3 = Activation('relu',name=cfg.mdl_nm+str(21))(trans3)
+    trans3 = Conv3D(conv3, (2, 2, 3), strides=(2, 2, 2))(cv4)
+    trans3 = BatchNormalization()(trans3)
+    trans3 = Activation('relu')(trans3)
 
     # conv block 5-6: inputsize: 4,4,99,64
-    cv5 = Conv3D(conv3, (2, 2, 3), padding='same',name=cfg.mdl_nm+str(22))(trans3)
-    cv5 = BatchNormalization(name=cfg.mdl_nm+str(23))(cv5)
-    cv5 = Activation('relu',name=cfg.mdl_nm+str(24))(cv5)
+    cv5 = Conv3D(conv3, (2, 2, 3), padding='same')(trans3)
+    cv5 = BatchNormalization()(cv5)
+    cv5 = Activation('relu')(cv5)
 
     cv6 = Conv3D(conv3, (2, 2, 3), padding='same',name=cfg.mdl_nm+str(25))(cv5)
-    cv6 = BatchNormalization(name=cfg.mdl_nm+str(26))(cv6)
-    cv6 = Activation('relu',name=cfg.mdl_nm+str(27))(cv6)
+    cv6 = BatchNormalization()(cv6)
+    cv6 = Activation('relu')(cv6)
 
     # flatten and classification
-    flt = Flatten(name=cfg.mdl_nm+str(28))(cv6)
+    flt = Flatten()(cv6)
 
-    ds = Dense(flatten_dense,name=cfg.mdl_nm+str(29))(flt)
-    ds = BatchNormalization(name=cfg.mdl_nm+str(30))(ds)
-    ds = Activation('relu',name=cfg.mdl_nm+str(31))(ds)
+    ds = Dense(flatten_dense)(flt)
+    ds = BatchNormalization()(ds)
+    ds = Activation('relu')(ds)
 
-    ds = Dense(flatten_dense,name=cfg.mdl_nm+str(32))(ds)
-    ds = BatchNormalization(name=cfg.mdl_nm+str(33))(ds)
-    ds = Activation('relu',name=cfg.mdl_nm+str(34))(ds)
+    ds = Dense(flatten_dense)(ds)
+    ds = BatchNormalization()(ds)
+    ds = Activation('relu')(ds)
 
-    out_put = Dense(2, activation='softmax',name=cfg.mdl_nm+str(35))(ds)
+    out_put = Dense(2, activation='softmax')(ds)
 
     model = Model(model_input, out_put)
     return model
+
+
+def Deep3DBatchNorm(model_input, cfg,conv1=32,conv2=32,conv3=64,flatten_dense=32):
+    '''
+    在 Deep3D 基础上，对每一层 BN 层，都做了电极维度上的归一化，即 axis=[1,2]
+    '''
+    trans1 = Conv3D(conv1, (3, 3, 5), strides=(2, 2, 4),name=cfg.mdl_nm+str(1))(model_input)
+    trans1 = BatchNormalization(axis=[1,2])(trans1)
+    trans1 = Activation('relu')(trans1)
+
+    # conv block 1-2 (cv1)
+    cv1 = Conv3D(conv1, (2, 2, 3), padding='same')(trans1)
+    cv1 = BatchNormalization(axis=[1,2])(cv1)
+    cv1 = Activation('relu')(cv1)
+
+    cv2 = Conv3D(conv1, (2, 2, 3), padding='same')(cv1)
+    cv2 = BatchNormalization(axis=[1,2])(cv2)
+    cv2 = Activation('relu')(cv2)
+
+    # transition bolock 1 : inputsize: 4,4,99,64
+    trans2 = Conv3D(conv2, (2, 2, 3), strides=(2, 2, 2))(cv2)
+    trans2 = BatchNormalization(axis=[1,2])(trans2)
+    trans2 = Activation('relu')(trans2)
+
+    # conv block 3-4: inputsize: 4,4,99,64
+    cv3 = Conv3D(conv2, (2, 2, 3), padding='same')(trans2)
+    cv3 = BatchNormalization(axis=[1,2])(cv3)
+    cv3 = Activation('relu')(cv3)
+
+    cv4 = Conv3D(conv2, (2, 2, 3), padding='same')(cv3)
+    cv4 = BatchNormalization(axis=[1,2])(cv4)
+    cv4 = Activation('relu')(cv4)
+
+    # transition bolock 3 : inputsize: 4,4,99,64
+    trans3 = Conv3D(conv3, (2, 2, 3), strides=(2, 2, 2))(cv4)
+    trans3 = BatchNormalization(axis=[1,2])(trans3)
+    trans3 = Activation('relu')(trans3)
+
+    # conv block 5-6: inputsize: 4,4,99,64
+    cv5 = Conv3D(conv3, (2, 2, 3), padding='same')(trans3)
+    cv5 = BatchNormalization(axis=[1,2])(cv5)
+    cv5 = Activation('relu')(cv5)
+
+    cv6 = Conv3D(conv3, (2, 2, 3), padding='same',name=cfg.mdl_nm+str(25))(cv5)
+    cv6 = BatchNormalization(axis=[1,2])(cv6)
+    cv6 = Activation('relu')(cv6)
+
+    # flatten and classification
+    flt = Flatten()(cv6)
+
+    ds = Dense(flatten_dense)(flt)
+    ds = BatchNormalization()(ds)
+    ds = Activation('relu')(ds)
+
+    ds = Dense(flatten_dense)(ds)
+    ds = BatchNormalization()(ds)
+    ds = Activation('relu')(ds)
+
+    out_put = Dense(2, activation='softmax')(ds)
+
+    model = Model(model_input, out_put)
+    return model
+    
+
 
 
 def Deep3DConstraint(model_input, cfg,conv1=32,conv2=32,conv3=64,flatten_dense=32):
