@@ -17,7 +17,7 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
     dt, lab = {}, {}
 
     # 构造 val_sub
-    all_sub = [i for i in range(1,cfg.sub_num)]
+    all_sub = [i for i in range(1,cfg.sub_num+1)]
     val_start_sub = (sub-1)*cfg.sub_num_each_cross +1
     val_sub = [i for i in range(
         val_start_sub, val_start_sub+cfg.sub_num_each_cross)]
@@ -32,10 +32,10 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
     # 若数据存在，则直接读取即可
     # 若要用两种数据，即cfg_2有值的时候，也即2D和3D数据一起，则这两种肯定数据肯定存在于文件夹，直接读取即可
     # 若这两种数据不存在，则需要先单独运行对应的cfg来生成一种数据
-    if os.path.exists(cfg.process_dt_dir + str(cfg.sub_num-1)+ 'dt.npy'):
+    if os.path.exists(cfg.process_dt_dir + str(cfg.sub_num)+ 'dt.npy'):
         print(' Data has already been processed, now, loading them from file {}......'.format(cfg.process_dt_dir))
         # 从文件读入数据
-        for i in range(1,cfg.sub_num):
+        for i in range(1,cfg.sub_num+1):
             dt[i] = np.load(cfg.process_dt_dir + str(i)+ 'dt.npy')
             lab[i] = np.load(cfg.process_dt_dir + str(i)+ 'lab.npy')
         # 将字典形式的数据，分为 train 和 val 两部分，并将其融合为数组形式
@@ -45,7 +45,7 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
         # 如果cfg_2有值，则返回数据列表，以适合接下来的双输入模型
         dt_2 = {}
         if cfg_2:
-            for i in range(1,cfg_2.sub_num):
+            for i in range(1,cfg_2.sub_num+1):
                 dt_2[i] = np.load(cfg_2.process_dt_dir + str(i)+ 'dt.npy')
 
             tr_dt_2,  __,    val_dt_2,  __     = split_tr_val(dt_2, lab, tr_sub, val_sub)
@@ -59,7 +59,7 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
         # 取出相应电极数据，返回字典形式
         dt = extract_elec_data(dt, cfg)
 
-        for i in range(1,cfg.sub_num):
+        for i in range(1,cfg.sub_num+1):
 
             # 将 每一个sub的label 转换为模型需要的二值输入格式
             lab[i] = to_categorical(np.squeeze(lab[i], axis=0))
@@ -121,16 +121,17 @@ def load_dataset(cfg):
     # 将所有的data变为 字典： 
     # {0：(samples，chans，points)，1：(samples，chans，points)  ...  8：...}
     # {0：(1, samples)，            1：(1, samples)  ...              8：...}
-    sub_num = data.shape[1]+1
+    sub_num = data.shape[1]
     all_dt = {}  
     all_lab = {}  
-    for sub in range(1,sub_num):
+    for sub in range(1,sub_num+1):
         tmp_dt = None
         if cfg.dt == 'Covert1s'or cfg.dt =='Covert2s':
             tmp_dt = np.transpose(data[0, sub-1], (0, 2, 1))
         else:
             tmp_dt = np.transpose(data[0, sub-1], (2, 1, 0))
         tmp_lab = label[0, sub-1]
+        # 数据里面的idx从0开始，读出之后的数据就从1开始
         all_dt[sub] = tmp_dt
         all_lab[sub] = tmp_lab
 
@@ -180,8 +181,8 @@ def split_tr_val(dt, lab, tr_sub, val_sub,get_tr=True,get_val=True):
     if get_tr:
         for i, sub in enumerate(tr_sub):
             print('     concatenate {} sub as training data...'.format(sub))
-            tmp_dt = dt[sub-1]
-            tmp_lab = lab[sub-1]
+            tmp_dt = dt[sub]
+            tmp_lab = lab[sub]
             if i == 0:
                 tr_dt = tmp_dt
                 tr_lab = tmp_lab

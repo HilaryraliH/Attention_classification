@@ -34,10 +34,10 @@ cfg = config(
     # 从 model 文件中选择模型
     mdl_nm = 'Deep3DTwoBranchBigResnet',
     # 每个模型跑几次, 只关心几次，不要关心是从0还是从1开始
-    cycles = 2,
+    cycles = 1,
     # 开始的cycle 和 开始的cross，此处的概念都是从1开始
     st_cycle = 1,
-    st_cross = 1,
+    st_cross = 15,
     # 自己写创建的文件夹备注信息，3D模型是否插值，插值方法等，都要在这里表明
     other_info = '32-32-64'
 )
@@ -78,7 +78,7 @@ if cfg.need_cfg_2:
 # 所有的混淆矩阵
 All_cnf_mtr = None
 
-for cycle in range(cfg.st_cycle,cfg.cycles):
+for cycle in range(cfg.st_cycle,cfg.cycles+1):
 
     # 定义保存所有cross指标的变量
     start = time()
@@ -92,7 +92,7 @@ for cycle in range(cfg.st_cycle,cfg.cycles):
     info_dict = {}
 
 
-    for cross in range(cfg.st_cross,cfg.cross_num):
+    for cross in range(cfg.st_cross,cfg.cross_num+1):
 
         # 定义保存一个cross指标的变量
         cfg.set_dir(cycle, cross)
