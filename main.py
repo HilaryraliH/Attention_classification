@@ -78,7 +78,7 @@ if cfg.need_cfg_2:
 # 所有的混淆矩阵
 All_cnf_mtr = None
 
-for cycle in range(cfg.st_cycle,cfg.cycles+1):
+for cycle in range(cfg.st_cycle,cfg.cycles + 1):
 
     # 定义保存所有cross指标的变量
     start = time()
@@ -92,7 +92,7 @@ for cycle in range(cfg.st_cycle,cfg.cycles+1):
     info_dict = {}
 
 
-    for cross in range(cfg.st_cross,cfg.cross_num+1):
+    for cross in range(cfg.st_cross,cfg.cross_num + 1):
 
         # 定义保存一个cross指标的变量
         cfg.set_dir(cycle, cross)
