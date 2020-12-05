@@ -7,11 +7,13 @@ from scipy.interpolate import griddata
 from scipy import interpolate
 import matplotlib as mpl
 import pylab as pl
+import mne
+from mne.connectivity import spectral_connectivity
 
 
 # 如果 print 需要彩色： \033[1;32;m{}\033[0m
 
-def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
+def load_data(sub, cfg,get_tr=True,get_val=True):
     # 初始化数据
     tr_dt, tr_lab, val_dt, val_lab = None,None,None,None
     dt, lab = {}, {}
@@ -30,8 +32,6 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
 
 
     # 若数据存在，则直接读取即可
-    # 若要用两种数据，即cfg_2有值的时候，也即2D和3D数据一起，则这两种肯定数据肯定存在于文件夹，直接读取即可
-    # 若这两种数据不存在，则需要先单独运行对应的cfg来生成一种数据
     if os.path.exists(cfg.process_dt_dir + str(cfg.sub_num)+ 'dt.npy'):
         print(' Data has already been processed, now, loading them from file {}......'.format(cfg.process_dt_dir))
         # 从文件读入数据
@@ -40,17 +40,14 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
             lab[i] = np.load(cfg.process_dt_dir + str(i)+ 'lab.npy')
         # 将字典形式的数据，分为 train 和 val 两部分，并将其融合为数组形式
         tr_dt, tr_lab, val_dt, val_lab = split_tr_val(dt, lab, tr_sub, val_sub,get_tr=get_tr,get_val=get_val)
-        
 
-        # 如果cfg_2有值，则返回数据列表，以适合接下来的双输入模型
-        dt_2 = {}
-        if cfg_2:
-            for i in range(1,cfg_2.sub_num+1):
-                dt_2[i] = np.load(cfg_2.process_dt_dir + str(i)+ 'dt.npy')
+        # 若要计算连接矩阵，则先将一个样本进行滑动窗口划分，再计算该样本的连接矩阵
+        if cfg.cal_con:
+            tr_dt = move_window(np.squeeze(tr_dt))
+            tr_dt = to_net(tr_dt)
+            val_dt = move_window(np.squeeze(val_dt))
+            val_dt = to_net(val_dt)
 
-            tr_dt_2,  __,    val_dt_2,  __     = split_tr_val(dt_2, lab, tr_sub, val_sub)
-            tr_dt = [tr_dt,tr_dt_2]
-            val_dt = [val_dt,val_dt_2]
     else:
 
         # 读取所有数据, 返回字典形式
@@ -64,12 +61,18 @@ def load_data(sub, cfg, cfg_2=None,get_tr=True,get_val=True):
             # 将 每一个sub的label 转换为模型需要的二值输入格式
             lab[i] = to_categorical(np.squeeze(lab[i], axis=0))
 
-            # 若需要，则转换为3D形式
+            # 若为3D模型，则转换为3D形式
             if cfg.dt_fm == '3D':
                 dt[i] = to_3D(cfg, dt[i])
 
+            # 若要计算功能链接
+            if cfg.cal_con:
+                dt[i] = to_net_move_window(dt[i])
+
+
             # 为了输入模型，需要在最后一维添加通道
-            dt[i] = np.expand_dims(dt[i], axis=-1)
+            if not cfg.cal_con:
+                dt[i] = np.expand_dims(dt[i], axis=-1)
 
             # 将数据存入文件
             print('{} sub data has been preprocessed, saving them to file .......'.format(i))
@@ -410,6 +413,78 @@ def to_3D(cfg,tr_dt):
     return train_dt
 
 
+def to_net(dt):
+    '''每一个样本计算一个二维的连接矩阵
+    Input:
+    ----------
+    dt: N,epochs,chans,points
+
+    Output:
+    -----------
+    con:N,chans,chans,1
+    '''
+    print('--------------------转换到网络连接--------------------------')
+    con, freqs, __, __, __ = spectral_connectivity(dt[0],method='coh', mode='multitaper',faverage=True)
+    
+    con_dt = np.zeros(shape=(dt.shape[0],dt.shape[2],dt.shape[2],1))
+    for i in range(dt.shape[0]):
+        # 计算每一个样本的连接 chans*chans，并赋值给 con_dt 保存
+        # 这里 freqs, times, n_epochs, n_tapers 都没有用到
+        con, __, __, __, __ = spectral_connectivity(dt[i], method='pli', mode='multitaper',faverage=True)
+        con_dt[i] = con
+    return con_dt
+
+
+def move_window(dt,window=100,interval=4):
+    '''将原长度的数据进行滑动，每滑动interval形成一个样本，共形成 N 个样本
+    
+    ----------
+    Arguments:
+    ----------
+    dt: N,chans,points
+    
+    ----------                                              
+    Returns:
+    ----------
+    An array of shape (N,epochs,H,W), which epochs denote the number of short sample we got
+    '''
+    epochs = None
+    for i in range(dt.shape[0]):
+        epoch_dt = move_100_samples(dt[i],window,interval)
+        if epochs is not None:
+            epochs = np.append(epochs,np.expand_dims(epoch_dt,axis=0),axis=0)
+        else:
+            epochs = np.expand_dims(epoch_dt,axis=0)
+    
+    return epochs
+    
+    
+    
+
+
+
+
+def move_100_samples(dt, window,interval):
+    '''将原长度的数据进行滑动，每滑动interval形成一个样本，共形成 N 个样本
+    ----------
+    Arguments:
+    ----------
+    dt: ndarray, shape=(H,W)
+    window: the length of each short sample
+    interval: the moving distance between each short sample  
+    
+    ----------                                              
+    Returns:
+    ----------
+    An array of shape (N,H,W), which N denote the number of short sample we got
+    '''
+    N = (dt.shape[1]-window)//interval
+    epoch_dt = np.zeros(shape=(N, dt.shape[0],window))
+    for i,st in enumerate(range(0,dt.shape[1]-window,interval)):
+        epoch_dt[i] = dt[:,st:st+window]
+    return epoch_dt
+
+
 # 改编自 https://blog.csdn.net/weixin_43718675/article/details/103497930
 def interp2d_station_to_grid(lon, lat, data,dt_0mtr, inter_size, method='cubic'):
     '''
@@ -482,3 +557,12 @@ def interp3d_station(dt):
                     results[i, j,k] = dt[i, j,k]
     return results
 
+
+
+def Z_Norm(x):
+    print('\nNormalizing the data......\n')
+    results = 0
+    x_mean=x.mean(axis=0) 
+    x_var=x.var(axis=0)
+    x_normalized=(x-x_mean)/np.sqrt(x_var+0.00001)       # 归一化          # 缩放平移
+    return x_normalized

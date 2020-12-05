@@ -49,7 +49,8 @@ visual_layer_dict = {
     'JnecnnOriginConstraint':-3,
     'Deep3DTwoBranchResnet':-4,
     'Deep3DBatchNorm':-4,
-    'Deep3DTwoBranchBigResnet':-4
+    'Deep3DTwoBranchBigResnet':-4,
+    'net_based_EegnetOrigin':-3
 }
 
 class config():
@@ -57,14 +58,16 @@ class config():
         # 从 datasets 中选择数据集, 从 Covert_elec 和 SimulEEG_elec 中选择电极
         self, dt_idx, elec_area, 
         # 设定数据的输入方式： '2D' or '3D' ( 只有当 elec_area 为 All时，才能为 3D )
-        dt_fm, 
+        dt_fm, is_Z_Norm,
         # 从 model 文件中选择模型
         mdl_nm, 
         # 若为 '3D'， 数据是否插值: True or False，并设置插值方式: 'linear', '2_poly', '3_poly'
         is_interpolate = False, interpolate_way = '3D_average', inter_size = 9, 
+        # 是否计算功能链接
+        cal_con=False,
         # 每次交叉验证用 sub_num_each_cross 个被试，模型共跑cycles次
         sub_num_each_cross=1, cycles=1, 
-        epochs=30, batch_size=32, optimizer='adam', 
+        epochs=30, batch_size=32, optimizer='adam', initAlpha=0.001,
         # 开始的cycle 和 开始的cross
         st_cycle = 0, st_cross = 0, need_cfg_2 = False,
         # 自己写创建的文件夹备注信息，3D模型是否插值，插值方法等，都要在这里表明
@@ -84,6 +87,7 @@ class config():
 
         # 设定数据的输入方式： '2D' or '3D'
         self.dt_fm = dt_fm
+        self.is_Z_Norm = is_Z_Norm
 
         # 若为 '3D'， 数据是否插值: True or False，并设置插值方式: 'linear', '2_poly', '3_poly'
         self.is_interpolate = is_interpolate
@@ -96,6 +100,7 @@ class config():
         self.cycles = cycles  # 每个模型只跑一次
         self.st_cycle = st_cycle
         self.st_cross = st_cross
+        self.initAlpha = initAlpha
         self.need_cfg_2 = need_cfg_2
 
         # 训练模型的参数
@@ -117,6 +122,7 @@ class config():
         self.cross_num = (self.sub_num//self.sub_num_each_cross) # 共 多少 折交叉验证 （可算出每一个cross几个被试）
         self.elec = eval(self.dt+'_elec')[self.elec_area]  # 具体电极导联
         self.visual_layer = visual_layer_dict[self.mdl_nm]
+        self.cal_con = cal_con
 
     def set_dir(self, cycle, cross):
         # 设置数据读取路径

@@ -12,24 +12,19 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
 def load_mdl_file(cfg):
-    # 若只有一个模型cfg，则直接load并返回即可
+    '''若存在之前训练过的模型，则直接load
+    '''
     mdl = load_model(cfg.save_mdl_file, custom_objects={'square': square, 'log': log})
 
     return mdl
 
 
-def blt_mdl(cfg,cfg_2=None):
+def blt_mdl(cfg,x=None):
     '''
-    按照特定的输入形式，建立模型
-    注意，最终建立的模型，还是靠cfg来控制，cfg_2中的模型设置是摆设
+    建立单个模型，而分支模型在model.py中则定义为了一个模型，也即cfg中的模型名字
     '''
     model = None
-    if cfg_2:
-        model_input1 = get_mdl_in_shape(cfg)
-        model_input2 = get_mdl_in_shape(cfg_2)
-        model_input = [model_input1,model_input2]
-    else:
-        model_input = get_mdl_in_shape(cfg)
+    model_input = get_mdl_in_shape(cfg,x=x)
     model = eval(cfg.mdl_nm)(model_input,cfg)
     model.compile(loss='binary_crossentropy', optimizer=cfg.optimizer, metrics=['accuracy'])
     return model
@@ -37,9 +32,10 @@ def blt_mdl(cfg,cfg_2=None):
 
 def blt_bnch_mdl(cfg_1,cfg_2):
     '''
-    :param cfg_1: 模型1的参数
-    :param cfg_2: 模型2的参数
-    :return: 两个模型拉通作为分支（两个输入，结尾时合并为一个输出）
+    cfg_1: 模型1的参数
+    cfg_2: 模型2的参数
+    return: 两个模型拉通作为分支（两个输入，结尾时合并为一个输出）
+    但并没有用到
     '''
     mdl_in1 = get_mdl_in_shape(cfg_1)
     mdl_in2 = get_mdl_in_shape(cfg_2)
@@ -64,18 +60,23 @@ def blt_bnch_mdl(cfg_1,cfg_2):
     return mdl
 
 
-def get_mdl_in_shape(cfg):
+def get_mdl_in_shape(cfg,x=None):
     '''
     按照cfg里面的设置，进行相应的数据输入格式设置，即初始化 model_input 的形状
     '''
-    if cfg.dt_fm == '2D':
-        model_input = Input(shape=(len(cfg.elec), cfg.sam_pnts, 1),name='input1') # chans, points, 1
-    elif cfg.dt_fm == '3D':
-        model_input = Input(shape=(9,9, cfg.sam_pnts, 1),name='input2') # 空间二位矩阵, points, 1
+    if x is not None:
+        model_input = Input(shape=x.shape[1:],name='input_datashape')
+    else:
+        if cfg.dt_fm == '2D':
+            model_input = Input(shape=(len(cfg.elec), cfg.sam_pnts, 1),name='input1') # chans, points, 1
+        elif cfg.dt_fm == '3D':
+            model_input = Input(shape=(9,9, cfg.sam_pnts, 1),name='input2') # 空间二位矩阵, points, 1
     return model_input
 
 
 def eval_mdl(model, X_test, Y_test):
+    '''验证模型
+    '''
     probs = model.predict(X_test)
     preds = probs.argmax(axis=-1)
     true_label = Y_test.argmax(axis=-1)
@@ -85,7 +86,8 @@ def eval_mdl(model, X_test, Y_test):
 
 
 def fit_mdl(model, cfg, X_train, Y_train, X_test, Y_test):
-    schedule = StepDecay(initAlpha=0.001,factor=0.4,dropEvery=10) # 构造阶梯型学习率衰减
+    '''训练模型'''
+    schedule = StepDecay(initAlpha=cfg.initAlpha,factor=0.4,dropEvery=10) # 构造阶梯型学习率衰减
     schedule.plot([i for i in range(30)],cfg)
     call_backs = [LearningRateScheduler(schedule)]
     hist = model.fit(X_train, Y_train,
@@ -100,8 +102,8 @@ def fit_mdl(model, cfg, X_train, Y_train, X_test, Y_test):
 
 
 
-# 在 fit_model 里面用到，用于调整学习率
 class LearningRateDecay:
+    '''在 fit_model 里面用到，用于调整学习率,这里定义了一个基础的画 lr 的变化的函数'''
     def plot(self, epochs,cfg, title="Learning Rate Schedule"):
         # compute the set of learning rates for each corresponding
         # epoch
@@ -117,9 +119,10 @@ class LearningRateDecay:
         plt.savefig(cfg.lr_change_file)
         plt.close()
 
-# 在 fit_model 里面用到，用于调整学习率
+
 class StepDecay(LearningRateDecay):
-    def __init__(self, initAlpha=0.001, factor=0.4,dropEvery=10):
+    '''在 fit_model 里面用到，用于调整学习率, 每 10 个epoch 以0.4bei'''
+    def __init__(self, initAlpha=0.0001, factor=0.4,dropEvery=10):
         # store the base initial learning rate, drop factor, and
         # epochs to drop every
         self.initAlpha = initAlpha
@@ -136,6 +139,35 @@ class StepDecay(LearningRateDecay):
 
 
 '''  #######################################  以下是2D模型的结构  ####################################### '''
+def net_based_EegnetOrigin(model_input, cfg, nb_classes=2, dropoutRate=0.1,norm_rate=0.25):
+    '''
+    以EEGNetOrigin为基础架构，对形状为 28*28 的连接网络进行计算，调整了eegnet中一些参数的大小
+    '''
+
+    blk1       = Conv2D(60, (3, 3), padding = 'same',use_bias = False)(model_input)
+    blk1       = BatchNormalization()(blk1)
+    blk1       = Activation('elu')(blk1)
+    blk1       = Conv2D(40,(3, 3), use_bias = False)(blk1)
+    blk1       = BatchNormalization()(blk1) 
+    blk1       = Activation('elu')(blk1)
+    
+    blk2       = Conv2D(20, (3, 3),use_bias = False)(blk1)
+    blk2       = BatchNormalization()(blk2)
+    blk2       = Activation('elu')(blk2)
+
+    blk2       = Conv2D(20, (3, 3),use_bias = False)(blk2)
+    blk2       = BatchNormalization()(blk2)
+    blk2       = Activation('elu')(blk2)
+    # blk2       = AveragePooling2D((2, 2))(blk2)
+        
+    flatten      = Flatten(name = 'flatten')(blk2)
+    
+    dense        = Dense(nb_classes, name = 'dense', kernel_constraint = max_norm(norm_rate))(flatten)
+    softmax      = Activation('softmax', name = 'softmax')(dense)
+    
+    return Model(inputs=model_input, outputs=softmax)
+
+
 
 def JnecnnOrigin(model_input,cfg, nb_classes=2):
     # article: Inter-subject transfer learning with an end-to-end deep convolutional neural network for EEG-based BCI
@@ -248,25 +280,25 @@ def DeepconvnetOrigin(model_input,cfg, nb_classes=2, dropoutRate = 0.5):
 
     blk1       = Conv2D(25, (1, 10))(model_input)
     blk1       = Conv2D(25, (chans, 1),use_bias=False)(blk1)
-    blk1       = BatchNormalization(axis=1,epsilon=1e-05, momentum=0.1)(blk1)
+    blk1       = BatchNormalization(epsilon=1e-05, momentum=0.1)(blk1)
     blk1       = Activation('elu')(blk1)
     blk1       = MaxPooling2D(pool_size=(1, 3), strides=(1, 2))(blk1)
     blk1       = Dropout(dropoutRate)(blk1)
   
     blk2       = Conv2D(50, (1, 10),use_bias=False)(blk1)
-    blk2       = BatchNormalization(axis=1,epsilon=1e-05, momentum=0.1)(blk2)
+    blk2       = BatchNormalization(epsilon=1e-05, momentum=0.1)(blk2)
     blk2       = Activation('elu')(blk2)
     blk2       = MaxPooling2D(pool_size=(1, 3), strides=(1, 2))(blk2)
     blk2       = Dropout(dropoutRate)(blk2)
     
     blk3       = Conv2D(100, (1, 10),use_bias=False)(blk2)
-    blk3       = BatchNormalization(axis=1,epsilon=1e-05, momentum=0.1)(blk3)
+    blk3       = BatchNormalization(epsilon=1e-05, momentum=0.1)(blk3)
     blk3       = Activation('elu')(blk3)
     blk3       = MaxPooling2D(pool_size=(1, 3), strides=(1, 2))(blk3)
     blk3       = Dropout(dropoutRate)(blk3)
     
     blk4       = Conv2D(200, (1, 10),use_bias=False)(blk3)
-    blk4       = BatchNormalization(axis=1,epsilon=1e-05, momentum=0.1)(blk4)
+    blk4       = BatchNormalization(epsilon=1e-05, momentum=0.1)(blk4)
     blk4       = Activation('elu')(blk4)
     blk4       = MaxPooling2D(pool_size=(1, 3), strides=(1, 2))(blk4)
     blk4       = Dropout(dropoutRate)(blk4)
@@ -581,7 +613,6 @@ def Deep3DBatchNorm(model_input, cfg,conv1=32,conv2=32,conv3=64,flatten_dense=32
     model = Model(model_input, out_put)
     return model
     
-
 
 
 def Deep3DConstraint(model_input, cfg,conv1=32,conv2=32,conv3=64,flatten_dense=32):
@@ -1057,17 +1088,13 @@ def Deep3DSmallKernel(model_input, cfg):
 
     # conv block 1-2 (cv1)
     cv1 = Conv3D(32, (1, 2, 1), padding='same')(trans1)
-    cv1 = BatchNormalization()(cv1)
     cv1 = Conv3D(32, (2, 1, 1), padding='same')(cv1)
-    cv1 = BatchNormalization()(cv1)
     cv1 = Conv3D(32, (1, 1, 3), padding='same')(cv1)
     cv1 = BatchNormalization()(cv1)
     cv1 = Activation('relu')(cv1)
 
     cv2 = Conv3D(32, (1, 2, 1), padding='same')(cv1)
-    cv2 = BatchNormalization()(cv2)
     cv2 = Conv3D(32, (2, 1, 1), padding='same')(cv2)
-    cv2 = BatchNormalization()(cv2)
     cv2 = Conv3D(32, (1, 1, 3), padding='same')(cv2)
     cv2 = BatchNormalization()(cv2)
     cv2 = Activation('relu')(cv2)
@@ -1079,17 +1106,13 @@ def Deep3DSmallKernel(model_input, cfg):
 
     # conv block 3-4: inputsize: 4,4,99,64
     cv3 = Conv3D(32, (1, 2, 1), padding='same')(trans2)
-    cv3 = BatchNormalization()(cv3)
     cv3 = Conv3D(32, (2, 1, 1), padding='same')(cv3)
-    cv3 = BatchNormalization()(cv3)
     cv3 = Conv3D(32, (1, 1, 3), padding='same')(cv3)
     cv3 = BatchNormalization()(cv3)
     cv3 = Activation('relu')(cv3)
 
     cv4 = Conv3D(32, (1, 2, 1), padding='same')(cv3)
-    cv4 = BatchNormalization()(cv4)
     cv4 = Conv3D(32, (2, 1, 1), padding='same')(cv4)
-    cv4 = BatchNormalization()(cv4)
     cv4 = Conv3D(32, (1, 1, 3), padding='same')(cv4)
     cv4 = BatchNormalization()(cv4)
     cv4 = Activation('relu')(cv4)
@@ -1101,17 +1124,13 @@ def Deep3DSmallKernel(model_input, cfg):
 
     # conv block 5-6: inputsize: 4,4,99,64
     cv5 = Conv3D(64, (1, 2, 1), padding='same')(trans3)
-    cv5 = BatchNormalization()(cv5)
     cv5 = Conv3D(64, (2, 1, 1), padding='same')(cv5)
-    cv5 = BatchNormalization()(cv5)
     cv5 = Conv3D(64, (1, 1, 3), padding='same')(cv5)
     cv5 = BatchNormalization()(cv5)
     cv5 = Activation('relu')(cv5)
 
     cv6 = Conv3D(64, (1, 2, 1), padding='same')(cv5)
-    cv6 = BatchNormalization()(cv6)
     cv6 = Conv3D(64, (2, 1, 1), padding='same')(cv6)
-    cv6 = BatchNormalization()(cv6)
     cv6 = Conv3D(64, (1, 1, 3), padding='same')(cv6)
     cv6 = BatchNormalization()(cv6)
     cv6 = Activation('relu')(cv6)

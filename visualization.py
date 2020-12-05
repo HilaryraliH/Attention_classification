@@ -1,3 +1,4 @@
+# coding=utf-8
 import numpy as np
 import pickle
 from keras.models import Model
@@ -8,7 +9,54 @@ from config import config
 from preprocess_data import load_data
 from model import load_mdl_file
 
+
+def plot_acc_for_each_mdl(acc_array)
+    '''将 n_model*n_sub 的 acc 数组画出来，共 n_sub 张图，每张图 n_model 个点
+    
+    ----------
+    Arguments:
+    ----------
+    acc_array：ndarray，shape = n_model*n_sub
+    
+    ----------                                              
+    Returns:
+    ----------
+    An array of shape (N,H,W), which N denote the number of short sample we got
+    '''
+
+
+def my_append_row(total, one):
+    '''连接每一个 cross 的混淆矩阵 (这一个 cycle 的混淆矩阵)，竖向连接，即增加行数'''
+    if total is None:
+        total = np.array(one)
+    else:
+        total = np.append(np.array(total), one, axis=0)
+    return total
+
+
+def my_append_col(total, one):
+    '''连接每一个 cycle 的混淆矩阵，横向连接，即增加列数'''
+    if total is None:
+        total = np.array(one)
+    else:
+        total = np.append(np.array(total), one, axis=1)
+    return total
+
+
+def save_other_info(info_dict, cfg):
+    '''将字典的 键值对 存到表格文件'''
+
+    f = open(cfg.other_info_file, 'w')  # 以'w'方式打开文件
+    for k, v in info_dict.items():  # 遍历字典中的键值
+        s = str(v)  # 把字典的值转换成字符型
+        f.write(k + ',' + s + '\n')  # 键和值放在一行，以回车结束,其中的逗号是区分csv文件中的单元格的
+    f.write('epochs,' + str(cfg.epochs) + '\n')
+    f.write('batch_size:,' + str(cfg.batch_size) + '\n')
+    f.close()
+
+
 def plot_dense_embed(mdl,cfg, nrow,ncol,val_x,val_y,cross):
+    '''画每个sub的可分性，放到一张大画布中的相应位置（第sub个位置）'''
     # 取出模型的第一层和dense层，dense层作为输出，构造新的模型
     out_ly_shape = mdl.layers[cfg.visual_layer].output
     act_mdl = Model(inputs=mdl.input, outputs=out_ly_shape)
@@ -44,7 +92,7 @@ def plot_dense_embed(mdl,cfg, nrow,ncol,val_x,val_y,cross):
 
 
 def plot_acc_embed(hist, nrow,ncol,cross):
-    '''保存每一次训练的每一张图'''
+    '''画每个sub的acc小图，放到一张大画布中的相应位置（第sub个位置）'''
 
     # 保存 acc 趋势图
     metric = 'accuracy'
@@ -55,6 +103,7 @@ def plot_acc_embed(hist, nrow,ncol,cross):
 
 
 def plot_loss_embed(hist, nrow,ncol,cross):
+    '''画每个sub的loss小图，放到一张大画布中的相应位置（第sub个位置）'''
     # 保存 loss 趋势图
     metric = 'loss'
     plt.subplot(nrow,ncol,cross+1) # 在画布的第 cross+1 个位置画
@@ -63,12 +112,13 @@ def plot_loss_embed(hist, nrow,ncol,cross):
     plt.axis('off')
 
 
-def plot_dense_big(cfg,nrow,ncol, st_cycle=0,st_cross=0):
-    for cycle in range(st_cycle, cfg.cycles):
+def plot_dense_big(cfg,nrow,ncol, st_cycle=1,st_cross=1):
+    '''将可分性画在一张大画布上，共 sub_num 个小图，共 nrow*ncol 个格子'''
+    for cycle in range(st_cycle, cfg.cycles+1):
         # 建立一张大画布
         plt.figure()
 
-        for cross in range(st_cross, cfg.cross_num):
+        for cross in range(st_cross, cfg.cross_num+1):
             cfg.set_dir(cycle, cross)
 
             # 读取数据
@@ -89,13 +139,13 @@ def plot_dense_big(cfg,nrow,ncol, st_cycle=0,st_cross=0):
         plt.close()
 
 
-def plot_acc_or_loss_big(cfg,metrics,nrow,ncol, st_cycle=0,st_cross=0):
-
-    for cycle in range(st_cycle,cfg.cycles):
+def plot_acc_or_loss_big(cfg,metrics,nrow,ncol, st_cycle=1,st_cross=1):
+    '''将 acc 或者 loss 画在一张大画布上，共 sub_num 个小图，共 nrow*ncol 个格子'''
+    for cycle in range(st_cycle,cfg.cycles+1):
         # 建立一张大画布
         plt.figure()
 
-        for cross in range(st_cross,cfg.cross_num):
+        for cross in range(st_cross,cfg.cross_num+1):
             cfg.set_dir(cycle,cross)
             
             # load history 文件
@@ -120,6 +170,7 @@ def plot_acc_or_loss_big(cfg,metrics,nrow,ncol, st_cycle=0,st_cross=0):
 
 
 def plot_dense_single(mdl,cfg,val_x,val_y,cross):
+    '''单独画出模型在 dense 层的可分性，单独保存为一张图片'''
     # 取出模型的第一层和dense层，dense层作为输出，构造新的模型
     out_ly_shape = mdl.layers[cfg.visual_layer].output
     act_mdl = Model(inputs=mdl.input, outputs=out_ly_shape)
@@ -157,7 +208,7 @@ def plot_dense_single(mdl,cfg,val_x,val_y,cross):
 
 
 def plot_acc_or_loss_single(hist, cfg):
-    '''保存每一次训练的每一张图'''
+    '''单独画出 acc 或 loss，单独保存为一张图片'''
 
     # 保存 acc 趋势图
     plt.figure()
@@ -184,10 +235,12 @@ def plot_acc_or_loss_single(hist, cfg):
     plt.close()
 
 
-
-def plot_dense_all_sigle(cfg, st_cycle=0,st_cross=0):
-    for cycle in range(st_cycle,cfg.cycles):
-        for cross in range(st_cross,cfg.cross_num):
+def plot_dense_all_sigle(cfg, st_cycle=1,st_cross=1):
+    '''直接画出所有的 dense 可分性图片，不在main.py中调用
+    在没有这个图的时候，单独运行这个文件来补画
+    '''
+    for cycle in range(st_cycle,cfg.cycles+1):
+        for cross in range(st_cross,cfg.cross_num+1):
             cfg.set_dir(cycle,cross)
 
             # 读取数据
@@ -207,8 +260,8 @@ def plot_dense_all_sigle(cfg, st_cycle=0,st_cross=0):
 if __name__ == "__main__":
     # 若main.py中没有正确地进行画图，则运行此文件重新画图
     # 要注意cfg的设置
-    st_cycle = 0
-    st_cross = 0
+    st_cycle = 1
+    st_cross = 1
     need_cfg_2 = False
     plot_all_dense = False
     plot_one_dense = True
@@ -224,13 +277,14 @@ if __name__ == "__main__":
         elec_area = 'All',
         # 设定数据的输入方式： '2D' or '3D' ( 只有当 elec_area 为 All时，才能为 3D )
         dt_fm = '3D',
+        is_Z_Norm = False,
         # 从 model 文件中选择模型
-        mdl_nm = 'Deep3DTwoBranch',
+        mdl_nm = 'JnecnnOrigin',
         # 每个模型跑几次
-        cycles = 2, 
+        cycles = 1, 
         # 开始的cycle 和 开始的cross
-        st_cycle = 0,
-        st_cross = 0,
+        st_cycle = 1,
+        st_cross = 1,
         # 自己写创建的文件夹备注信息，3D模型是否插值，插值方法等，都要在这里表明
         other_info = '32-32-64'
     )
